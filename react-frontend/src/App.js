@@ -2,6 +2,10 @@ import React, { Component } from 'react';
 import SimpleAsset from './components/SimpleAsset.js'
 import axios from 'axios';
 import mongoose from 'mongoose';
+import { BrowserRouter as Router, Route, Routes } from 'react-router-dom';
+
+// Update the axios base URL
+axios.defaults.baseURL = 'http://localhost:8081';
 
 //By extending the React Component "Component" our "App" component can use features provided by the React framework
 
@@ -19,7 +23,9 @@ export default class App extends Component {
     //the next line will initalize the state with an empty array of assets
 
     this.state = {
-      assets: []
+      assets: [],
+      loading: true,
+      error: null
     }
   }
 
@@ -31,13 +37,13 @@ export default class App extends Component {
     //The axios library will be used to ask the express server to deliver the data of the assets that are already in the database 
     //by sending a get request to the express rest api
 
-    axios.get('http://localhost:8080/assets/').then(response => {
+    axios.get('/assets/').then(response => {
 
       //this code will be executed as soon as the browser receives the response from the express server
       //in order to see how the response.data was created open the file /express-mongo-backend/server.js
       //and look for the line: assetRoutes.route('/').get(function (req, res) {
 
-      console.log(response.data);
+      console.log('Data received:', response.data);
 
       //if the application is started for the first time and there are no assets in the database yet, we will create one example asset 
 
@@ -63,34 +69,49 @@ export default class App extends Component {
       this.setState({
         //we will not just put the asset data in the state, but create React components that can render the data and put them in the state
         //to see how a "SimpleAsset" renders and works, look into the file /react-frontend/components/SimpleAsset.js
-        assets: response.data
+        assets: response.data,
+        loading: false
       });
-    }).catch(function (error) { console.log(error); })
+    }).catch(error => {
+      console.error('Error fetching data:', error);
+      this.setState({
+        error: 'Failed to fetch assets',
+        loading: false
+      });
+    });
   }
 
   //every React component needs to have a render method
   //it creates the HTML to update the browser window when the component is shown for the first time and whenever the state is changed through "setState"
   render() {
+    const { assets, loading, error } = this.state;
+
+    if (loading) return <div>Loading...</div>;
+    if (error) return <div>Error: {error}</div>;
+    if (assets.length === 0) return <div>No assets found. Add some!</div>;
+
     //the following code is no correct JavaScript
     //the code that looks like HTML will be transformed into JavaScript code that renders the HTML into the DOM 
     //that is one of the things that happens, when you test the react application by running "npm start"
     //it is done by a program called JSX-compiler
     //be carefull, the code looks like HTML but is actually not exactly the same as HTML, read the react documentation for the details
     return (
-      <div>
-        <h1>simple asset management application</h1>
-        <p>to create a new asset click this button:&nbsp;
-        { /*we can insert dynamic data into the static parts of the HTML, by writing JavaScript code within curly brackets */}
-          <button onClick={this.handleCreateAsset}>create asset</button>
-        </p>
-        <table>
-          <tbody>
-            <tr><th>description</th><th>value</th><th>action</th></tr>
-            {/*if the JavaScript code returns an array of React components, then the generated code will loop through the array and render all components in the array*/}
-            {this.state.assets.map(asset => <SimpleAsset key={asset._id} onDelete={this.handleDeleteAsset} asset={asset} />)}
-          </tbody>
-        </table>
-      </div>
+      <Router>
+        <div>
+          <h1>simple asset management application</h1>
+          <p>to create a new asset click this button:&nbsp;
+          { /*we can insert dynamic data into the static parts of the HTML, by writing JavaScript code within curly brackets */}
+            <button onClick={this.handleCreateAsset}>create asset</button>
+          </p>
+          <table>
+            <tbody>
+              <tr><th>description</th><th>value</th><th>action</th></tr>
+              {/*if the JavaScript code returns an array of React components, then the generated code will loop through the array and render all components in the array*/}
+              {this.state.assets.map(asset => <SimpleAsset key={asset._id} onDelete={this.handleDeleteAsset} asset={asset} />)}
+            </tbody>
+          </table>
+        </div>
+      </Router>
     );
   }
 
@@ -136,7 +157,7 @@ export default class App extends Component {
 
     //we delete the asset identified by the id in the event in the mongodb database, by calling the "delete" api of our express server 
 
-    axios.get('http://localhost:8080/assets/delete/' + IdOfAssetToDelete)
+    axios.get('http://localhost:8081/assets/delete/' + IdOfAssetToDelete)
       .then(res => console.log(res.data));
 
     //now we delete the asset in the UI and trigger an UI update by calling ".setState()"
@@ -154,7 +175,7 @@ export default class App extends Component {
   //the next method is just a helper to save a new asset in the database
 
   saveAssetToDatabase(asset) {
-    axios.post('http://localhost:8080/assets/add', asset)
+    axios.post('http://localhost:8081/assets/add', asset)
       .then(res => console.log(res.data));
   }
 

@@ -7,43 +7,48 @@ const bodyParser = require('body-parser');
 const cors = require('cors');
 const mongoose = require('mongoose');
 const assetRoutes = express.Router();
-const PORT = 8080;
+const PORT = 8081;  // Make sure this port is consistent
 
 // the data structure to save an asset is defined in /express-mongo-backend/asset.model.js
 
 let Asset = require('./asset.model');
 
-// we need cors because JavaScript could otherwise not make requests to other servers than the one that delivered the JavaScript 
-
-app.use(cors());
+// Enable CORS for frontend
+app.use(cors({
+    origin: 'http://localhost:3001',
+    credentials: true
+}));
 
 //to parse the JSON string in the body of the post requests into JavaScript objects we use the bodyParser
 
 app.use(bodyParser.json());
 
+// Add a root route
+app.get('/', (req, res) => {
+    res.send('API is running');
+});
+
 //we connect the mongoose object to the MongoDB database "assets" that will store and deliver our asset data
 
-mongoose.connect('mongodb://127.0.0.1:27017/assets', { useNewUrlParser: true });
+// Make sure to replace <username>, <password>, and <clustername> with your actual MongoDB Atlas credentials
+mongoose.connect('mongodb+srv://Arnav_Agarwal:Arnav2005@cluster0.no81p.mongodb.net/assets?retryWrites=true&w=majority&appName=Cluster0', {
+    useNewUrlParser: true,
+    useUnifiedTopology: true
+});
+
 const connection = mongoose.connection;
-
-connection.once('open', function () {
+connection.once('open', () => {
     console.log("MongoDB database connection established successfully");
-})
-
+});
 
 //now we define the rest endpoints for the CRUD methods and implement the CRUD methods
 
 //R: read all assets
 
-assetRoutes.route('/').get(function (req, res) {
-    console.log("got a request");
-    Asset.find(function (err, assets) {
-        if (err) {
-            console.log(err);
-        } else {
-            res.json(assets);
-        }
-    });
+assetRoutes.route('/').get((req, res) => {
+    Asset.find()
+        .then(assets => res.json(assets))
+        .catch(err => res.status(400).json('Error: ' + err));
 });
 
 //C: creat a new asset
@@ -106,6 +111,6 @@ app.use('/assets', assetRoutes);
 
 //start the server and make it listen and answer to requests to the defined port
 
-app.listen(PORT, function () {
-    console.log("Server should be running on Port: " + PORT);
+app.listen(PORT, () => {
+    console.log(`Server is running on port ${PORT}`);
 });
